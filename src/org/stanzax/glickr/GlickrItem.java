@@ -47,9 +47,8 @@ public class GlickrItem {
 		}
 		return sb.toString();
 	}
-	
-	private static ArrayList<GlickrItem> doSearch(
-			String urlTemplate,
+
+	private static ArrayList<GlickrItem> doSearch(String urlTemplate,
 			String escapedKeywords, int beginNum, int endNum) {
 		ArrayList<GlickrItem> items = new ArrayList<GlickrItem>();
 		int imagesPerPage = 60;
@@ -57,8 +56,8 @@ public class GlickrItem {
 		int stopPageId = endNum / imagesPerPage + 1;
 
 		for (int pageId = startPageId; pageId <= stopPageId; pageId++) {
-			String pageURL = urlTemplate + "&q="
-					+ escapedKeywords + "&page=" + pageId;
+			String pageURL = urlTemplate + "&q=" + escapedKeywords + "&page="
+					+ pageId;
 			String pageSrc = fetchWebPage(pageURL);
 			int idx = 0;
 			int idx2 = 0;
@@ -148,7 +147,6 @@ public class GlickrItem {
 		return cleanInfo.toString();
 	}
 
-
 	public static String escapeKeywords(String keywords) {
 		StringBuffer sb = new StringBuffer();
 		String[] segs = keywords.split(" ");
@@ -178,8 +176,8 @@ public class GlickrItem {
 	 * @param keywords
 	 *            Search keywords, split with " "
 	 * @param groupName
-	 *            Place search group name. If it is null or "", then group search
-	 *            will be disabled.
+	 *            Place search group name. If it is null or "", then group
+	 *            search will be disabled.
 	 * @param beginNum
 	 *            Start id, used for paging
 	 * @param endNum
@@ -191,13 +189,14 @@ public class GlickrItem {
 		String escapedKeywords = escapeKeywords(keywords);
 		ArrayList<GlickrItem> items = null;
 		if (groupName == null || groupName == "") {
-			items = doSearch("http://www.flickr.com/search/?z=m&w=all&m=text", escapedKeywords, beginNum, endNum);
+			items = doSearch("http://www.flickr.com/search/?z=m&w=all&m=text",
+					escapedKeywords, beginNum, endNum);
 		} else {
 			// first of all, determine group id
 			String groupId = getGroupId(groupName);
-			String urlTemplate = "http://www.flickr.com/search/groups/?m=pool&w=" + escapeKeywords(groupId);
-			items = doSearch(urlTemplate, escapedKeywords, beginNum,
-					endNum);
+			String urlTemplate = "http://www.flickr.com/search/groups/?m=pool&w="
+					+ escapeKeywords(groupId);
+			items = doSearch(urlTemplate, escapedKeywords, beginNum, endNum);
 		}
 		return items.toArray(new GlickrItem[items.size()]);
 	}
