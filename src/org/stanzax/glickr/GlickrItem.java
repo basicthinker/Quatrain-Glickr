@@ -47,8 +47,9 @@ public class GlickrItem {
 		}
 		return sb.toString();
 	}
-
-	private static ArrayList<GlickrItem> doGeneralSearch(
+	
+	private static ArrayList<GlickrItem> doSearch(
+			String urlTemplate,
 			String escapedKeywords, int beginNum, int endNum) {
 		ArrayList<GlickrItem> items = new ArrayList<GlickrItem>();
 		int imagesPerPage = 60;
@@ -56,8 +57,8 @@ public class GlickrItem {
 		int stopPageId = endNum / imagesPerPage + 1;
 
 		for (int pageId = startPageId; pageId <= stopPageId; pageId++) {
-			String pageURL = "http://www.flickr.com/search/?z=m&w=all&q="
-					+ escapedKeywords + "&m=text&page=" + pageId;
+			String pageURL = urlTemplate + "&q="
+					+ escapedKeywords + "&page=" + pageId;
 			String pageSrc = fetchWebPage(pageURL);
 			int idx = 0;
 			int idx2 = 0;
@@ -136,6 +137,9 @@ public class GlickrItem {
 		String[] splt = sb.toString().split(" |\t|\r|\n");
 		StringBuffer cleanInfo = new StringBuffer();
 		for (String sp : splt) {
+			if (sp.length() == 0) {
+				continue;
+			}
 			if (cleanInfo.length() > 0) {
 				cleanInfo.append(" ");
 			}
@@ -144,13 +148,6 @@ public class GlickrItem {
 		return cleanInfo.toString();
 	}
 
-	private static ArrayList<GlickrItem> doPlaceSearch(String escapedKeywords,
-			String placeSearch, int beginNum, int endNum) {
-		System.out.println("doing place search!");
-		ArrayList<GlickrItem> items = new ArrayList<GlickrItem>();
-
-		return items;
-	}
 
 	public static String escapeKeywords(String keywords) {
 		StringBuffer sb = new StringBuffer();
@@ -165,6 +162,8 @@ public class GlickrItem {
 					sb.append("%2B");
 				} else if (ch == '%') {
 					sb.append("%25");
+				} else if (ch == '@') {
+					sb.append("%40");
 				} else {
 					sb.append(ch);
 				}
@@ -178,11 +177,9 @@ public class GlickrItem {
 	 * 
 	 * @param keywords
 	 *            Search keywords, split with " "
-	 * @param placeSearch
-	 *            Place search URL. If it is null or "", then place search will
-	 *            be disabled. For usage examples, if you wanna search cat
-	 *            photos in New York City, set placeSearch to
-	 *            "United+States/New+York/New+York".
+	 * @param groupName
+	 *            Place search group name. If it is null or "", then group search
+	 *            will be disabled.
 	 * @param beginNum
 	 *            Start id, used for paging
 	 * @param endNum
@@ -190,16 +187,29 @@ public class GlickrItem {
 	 * @return
 	 */
 	public static GlickrItem[] getGlickrItems(String keywords,
-			String placeSearch, int beginNum, int endNum) {
+			String groupName, int beginNum, int endNum) {
 		String escapedKeywords = escapeKeywords(keywords);
 		ArrayList<GlickrItem> items = null;
-		if (placeSearch == null || placeSearch == "") {
-			items = doGeneralSearch(escapedKeywords, beginNum, endNum);
+		if (groupName == null || groupName == "") {
+			items = doSearch("http://www.flickr.com/search/?z=m&w=all&m=text", escapedKeywords, beginNum, endNum);
 		} else {
-			items = doPlaceSearch(escapedKeywords, placeSearch, beginNum,
+			// first of all, determine group id
+			String groupId = getGroupId(groupName);
+			String urlTemplate = "http://www.flickr.com/search/groups/?m=pool&w=" + escapeKeywords(groupId);
+			items = doSearch(urlTemplate, escapedKeywords, beginNum,
 					endNum);
 		}
 		return items.toArray(new GlickrItem[items.size()]);
+	}
+
+	private static String getGroupId(String groupName) {
+		String webUrl = "http://www.flickr.com/groups/" + groupName;
+		String pageSrc = fetchWebPage(webUrl);
+		int idx = pageSrc.indexOf("var global_group_nsid");
+		idx = pageSrc.indexOf('"', idx) + 1;
+		int idx2 = pageSrc.indexOf('"', idx);
+		String groupId = pageSrc.substring(idx, idx2);
+		return groupId;
 	}
 
 }
