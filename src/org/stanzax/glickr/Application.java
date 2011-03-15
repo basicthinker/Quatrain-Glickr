@@ -7,12 +7,12 @@ public class Application {
 	private static void queryWithTiming(String keywords, String groupName) {
 		int beginNum = 0;
 		int endNum = 19;
-		Date startTime = new Date();
+		long startTime = System.currentTimeMillis();
 		GlickrItem.getGlickrItems(keywords, groupName, beginNum, endNum);
-		Date stopTime = new Date();
-		long milli = stopTime.getTime() - startTime.getTime();
+		long stopTime = System.currentTimeMillis();
+		long duration = stopTime - startTime;
 		System.out.println("finished querying \"" + keywords + "\" in group \""
-				+ groupName + "\", time cost is " + milli + " ms");
+				+ groupName + "\", time cost is " + duration + " ms");
 	}
 
 	public static void main(String[] args) {
