@@ -1,7 +1,5 @@
 package org.stanzax.glickr;
 
-import java.util.Date;
-
 public class Application {
 
 	private static void queryWithTiming(String keywords, String groupName) {
