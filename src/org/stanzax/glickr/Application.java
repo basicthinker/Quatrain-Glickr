@@ -11,7 +11,8 @@ public class Application {
 		long stopTime = System.currentTimeMillis();
 		long duration = stopTime - startTime;
 		System.out.println("finished querying \"" + keywords + "\" in group \""
-				+ groupName + "\", time cost is " + duration + " ms");
+				+ groupName + "\", group id is '" + groupId
+				+ "', time cost is " + duration + " ms");
 	}
 
 	public static void main(String[] args) {
