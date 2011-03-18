@@ -175,8 +175,8 @@ public class GlickrItem {
 	 * 
 	 * @param keywords
 	 *            Search keywords, split with " "
-	 * @param groupName
-	 *            Place search group name. If it is null or "", then group
+	 * @param groupId
+	 *            Place search group id. If it is null or "", then group
 	 *            search will be disabled.
 	 * @param beginNum
 	 *            Start id, used for paging
@@ -185,15 +185,14 @@ public class GlickrItem {
 	 * @return
 	 */
 	public static GlickrItem[] getGlickrItems(String keywords,
-			String groupName, int beginNum, int endNum) {
+			String groupId, int beginNum, int endNum) {
 		String escapedKeywords = escapeKeywords(keywords);
 		ArrayList<GlickrItem> items = null;
-		if (groupName == null || groupName == "") {
+		if (groupId == null || groupId == "") {
 			items = doSearch("http://www.flickr.com/search/?z=m&w=all&m=text",
 					escapedKeywords, beginNum, endNum);
 		} else {
 			// first of all, determine group id
-			String groupId = getGroupId(groupName);
 			String urlTemplate = "http://www.flickr.com/search/groups/?m=pool&w="
 					+ escapeKeywords(groupId);
 			items = doSearch(urlTemplate, escapedKeywords, beginNum, endNum);
@@ -201,13 +200,29 @@ public class GlickrItem {
 		return items.toArray(new GlickrItem[items.size()]);
 	}
 
-	private static String getGroupId(String groupName) {
+	public static String getGroupId(String groupName) {
 		String webUrl = "http://www.flickr.com/groups/" + groupName;
-		String pageSrc = fetchWebPage(webUrl);
-		int idx = pageSrc.indexOf("var global_group_nsid");
-		idx = pageSrc.indexOf('"', idx) + 1;
-		int idx2 = pageSrc.indexOf('"', idx);
-		String groupId = pageSrc.substring(idx, idx2);
+		String groupId = null;
+		try {
+			URL url = new URL(webUrl);
+			BufferedReader br = new BufferedReader(new InputStreamReader(
+					url.openStream()));
+			String line = null;
+			while ((line = br.readLine()) != null) {
+				int idx = line.indexOf("var global_group_nsid");
+				if (idx >= 0) {
+					idx += 25;
+					int idx2 = line.indexOf('"', idx);
+					groupId = line.substring(idx, idx2);
+					break;
+				}
+			}
+			br.close();
+		} catch (MalformedURLException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		return groupId;
 	}
 
