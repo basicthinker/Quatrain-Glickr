@@ -3,13 +3,15 @@
  */
 package org.stanzax.glickr;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import com.aetrion.flickr.Flickr;
-import com.aetrion.flickr.photos.GeoData;
+import com.aetrion.flickr.photos.Extras;
 import com.aetrion.flickr.photos.Photo;
 import com.aetrion.flickr.photos.PhotoList;
 import com.aetrion.flickr.photos.PhotosInterface;
 import com.aetrion.flickr.photos.SearchParameters;
-import com.aetrion.flickr.photos.geo.GeoInterface;
 
 /**
  * @author basicthinker
@@ -24,7 +26,6 @@ public class Aggregator {
 	public static void main(String[] args) {
 		Flickr flickr = new Flickr(apiKey);
 		PhotosInterface photos = flickr.getPhotosInterface();
-		GeoInterface geo = flickr.getGeoInterface();
 		
 		String text = "cat";
 		int perPage = 10;
@@ -33,16 +34,21 @@ public class Aggregator {
 		SearchParameters para = new SearchParameters();
 		para.setText(text);
 		para.setHasGeo(true);
+		Set<String> extras = new HashSet<String>(1, 1);
+		extras.add(Extras.GEO);
+		para.setExtras(extras);
+		Long timeBegin = System.currentTimeMillis();
 		try {
 			PhotoList list = photos.search(para, perPage, numPage);
 			for (Object obj : list) {
 				Photo photo = (Photo)obj;
-				GeoData geoData = geo.getLocation(photo.getId());
-				System.out.println(geoData.toString());
+				System.out.println(photo.getGeoData());
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		Long latency = System.currentTimeMillis() - timeBegin;
+		System.out.println(latency);
 	}
 
 }
