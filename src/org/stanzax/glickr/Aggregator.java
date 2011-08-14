@@ -10,9 +10,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aetrion.flickr.Flickr;
 import com.aetrion.flickr.photos.Extras;
-import com.aetrion.flickr.photos.GeoData;
-import com.aetrion.flickr.photos.Photo;
-import com.aetrion.flickr.photos.PhotoList;
 import com.aetrion.flickr.photos.PhotosInterface;
 import com.aetrion.flickr.photos.SearchParameters;
 
@@ -77,18 +74,17 @@ public class Aggregator {
 						para.setExtras(extras);
 						
 						try {
-							PhotoList list = photos.search(para, perPage, numPage);
-							for (Object photo : list) {
-								GeoData geo = ((Photo)photo).getGeoData();
-								System.out.println(geo.toString());
-							}
+							long timeSearch = System.currentTimeMillis();
+							photos.search(para, perPage, numPage);
+							long latency = System.currentTimeMillis() - timeSearch;
+							System.out.println(group.getName() + "\t" + latency);
 						} catch (Exception e) {
 							System.out.println("Error in " + group.getName() +
 									" for " + text + " : " + e.getMessage());
 						} finally {
 							endCount.incrementAndGet();
-							synchronized(this) {
-								notifyAll();
+							synchronized(Aggregator.this) {
+								Aggregator.this.notifyAll();
 							}
 						}
 					}
@@ -96,13 +92,14 @@ public class Aggregator {
 				}
 			).start();
 		} // trigger multiple threads to search local
-		while (endCount.get() != groups.size()) {
-			try {
-				synchronized(this) {
+		
+		synchronized(this) {
+			while (endCount.get() != groups.size()) {
+				try {
 					wait();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
 				}
-			} catch (InterruptedException e) {
-				e.printStackTrace();
 			}
 		}
 		Long latency = System.currentTimeMillis() - timeBegin;
