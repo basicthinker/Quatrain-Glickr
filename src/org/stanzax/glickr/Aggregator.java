@@ -114,7 +114,12 @@ public class Aggregator extends MrServer {
 				}
 			}
 		}
-		preturn(positions.toArray());
+		String[] arrayPos = new String[positions.size()];
+		int i = 0;
+		for (String position : positions) {
+			arrayPos[i++] = position;
+		}
+		preturn(arrayPos);
 	}
 	
 	public void MrSearch(final String text) {
@@ -129,12 +134,13 @@ public class Aggregator extends MrServer {
 					
 					try {
 						PhotoList list = photos.search(para, perPage, numPage);
-						Vector<String> positions = new Vector<String>(perPage);
+						String[] positions = new String[list.size()];
+						int i = 0;
 						for (Object obj : list) {
 							Photo photo = (Photo)obj;
-							positions.add(photo.getGeoData().toString());
+							positions[i++] = photo.getGeoData().toString();
 						}
-						preturn(positions.toArray());
+						preturn(positions);
 					} catch (Exception e) {
 						System.out.println("Error in " + group.getName() +
 								" for " + text + " : " + e.getMessage());
