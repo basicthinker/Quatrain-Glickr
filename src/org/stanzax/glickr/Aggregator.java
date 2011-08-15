@@ -3,11 +3,15 @@
  */
 package org.stanzax.glickr;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Vector;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.stanzax.quatrain.hadoop.HadoopWrapper;
@@ -72,6 +76,117 @@ public class Aggregator extends MrServer {
 		groups.add(Group.USA);
 	}
 	
+	public void WarmUp() {
+		// Retrieve the keyword list
+		ArrayList<String> keywords = new ArrayList<String>(100);
+		try {
+			BufferedReader in = new BufferedReader(new FileReader("KeyWords.txt"));
+			String keyword;
+			while ((keyword = in.readLine()) != null) {
+				keywords.add(keyword);
+			}
+			in.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		// Build data structure for log
+		int cntKeys = keywords.size();
+		final ConcurrentHashMap<Group, ArrayList<Integer>> results = 
+			new ConcurrentHashMap<Group, ArrayList<Integer>>();
+		results.put(Group.ARGENTINA, new ArrayList<Integer>(cntKeys));
+		results.put(Group.AUSTRIA, new ArrayList<Integer>(cntKeys));
+		results.put(Group.BHUTAN, new ArrayList<Integer>(cntKeys));
+		results.put(Group.BOLIVIA, new ArrayList<Integer>(cntKeys));
+		results.put(Group.BRAZIL, new ArrayList<Integer>(cntKeys));
+		results.put(Group.CANADA, new ArrayList<Integer>(cntKeys));
+		results.put(Group.CHINA, new ArrayList<Integer>(cntKeys));
+		results.put(Group.CUBA, new ArrayList<Integer>(cntKeys));
+		results.put(Group.ENGLAND, new ArrayList<Integer>(cntKeys));
+		results.put(Group.FRANCE, new ArrayList<Integer>(cntKeys));
+		results.put(Group.GERMANY, new ArrayList<Integer>(cntKeys));
+		results.put(Group.GREAT_BRITAIN, new ArrayList<Integer>(cntKeys));
+		results.put(Group.GREECE, new ArrayList<Integer>(cntKeys));
+		results.put(Group.GUYANA, new ArrayList<Integer>(cntKeys));
+		results.put(Group.INDIA, new ArrayList<Integer>(cntKeys));
+		results.put(Group.IRAN, new ArrayList<Integer>(cntKeys));
+		results.put(Group.JAMAICA, new ArrayList<Integer>(cntKeys));
+		results.put(Group.JAPAN, new ArrayList<Integer>(cntKeys));
+		results.put(Group.KAZAKHSTAN, new ArrayList<Integer>(cntKeys));
+		results.put(Group.KOREA, new ArrayList<Integer>(cntKeys));
+		results.put(Group.LAOS, new ArrayList<Integer>(cntKeys));
+		results.put(Group.MALAYSIA, new ArrayList<Integer>(cntKeys));
+		results.put(Group.MEXICO, new ArrayList<Integer>(cntKeys));
+		results.put(Group.NEPAL, new ArrayList<Integer>(cntKeys));
+		results.put(Group.PARAGUAY, new ArrayList<Integer>(cntKeys));
+		results.put(Group.SPAIN, new ArrayList<Integer>(cntKeys));
+		results.put(Group.SWITZERLAND, new ArrayList<Integer>(cntKeys));
+		results.put(Group.THAILAND, new ArrayList<Integer>(cntKeys));
+		results.put(Group.URUGUAY, new ArrayList<Integer>(cntKeys));
+		results.put(Group.USA, new ArrayList<Integer>(cntKeys));
+		
+		System.out.print("Warmup finishes: ");
+		for (final String text : keywords) {
+			final AtomicInteger count = new AtomicInteger();
+			for (final Group group : groups) {
+				new java.lang.Thread(new Runnable() {
+	
+					@Override
+					public void run() {
+						SearchParameters para = new SearchParameters();
+						para.setText(text);
+						para.setHasGeo(true);
+						para.setGroupId(group.getID());
+						para.setExtras(extras);
+						
+						try {
+							PhotoList list = photos.search(para, perPage, numPage);
+							results.get(group).add(list.size());
+						} catch (Exception e) {
+							results.get(group).add(0);
+							System.out.println("[WarmUp]Error in " + group.getName() +
+									" for " + text + " : " + e.getMessage());
+						} finally {
+							int current = count.incrementAndGet();
+							if (current == groups.size()) {
+								synchronized(text) {
+									text.notifyAll();
+								}
+							}
+						}
+					}
+					
+				}).start();
+			}
+			synchronized(text) {
+				while (count.get() != groups.size()) {
+					try {
+						text.wait();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+			System.out.print(" " + text);
+		} // for each key word
+		System.out.println();
+		
+		// Output log
+		PrintStream printer = System.out;
+		printer.print("#");
+		for (Group group : groups) {
+			printer.print("\t" + group.getName());
+		}
+		printer.println();
+		for (int i = 0; i < cntKeys; ++i) {
+			printer.print((i + 1) + "\t");
+			for (Group group : groups) {
+				printer.print("\t" + results.get(group).get(i));
+			}
+			printer.println();
+		}
+	}
+	
 	public void Search(final String text) {
 		final AtomicInteger endCount = new AtomicInteger();
 		final Vector<String> positions = new Vector<String>(groups.size() * perPage);
@@ -91,16 +206,17 @@ public class Aggregator extends MrServer {
 								positions.add(photo.getGeoData().toString());
 							}
 						} catch (Exception e) {
-							System.out.println("Error in " + group.getName() +
+							System.out.println("[Search] Error in " + group.getName() +
 									" for " + text + " : " + e.getMessage());
 						} finally {
-							endCount.incrementAndGet();
-							synchronized(Aggregator.this) {
-								Aggregator.this.notifyAll();
+							int current = endCount.incrementAndGet();
+							if (current == groups.size()) {
+								synchronized(Aggregator.this) {
+									Aggregator.this.notifyAll();
+								}
 							}
 						}
 					}
-					
 				}
 			).start();
 		} // trigger multiple threads to search local
@@ -142,7 +258,7 @@ public class Aggregator extends MrServer {
 						}
 						preturn(positions);
 					} catch (Exception e) {
-						System.out.println("Error in " + group.getName() +
+						System.out.println("[MrSearch] Error in " + group.getName() +
 								" for " + text + " : " + e.getMessage());
 					}
 				}
@@ -163,6 +279,7 @@ public class Aggregator extends MrServer {
 			Aggregator aggr = new Aggregator("localhost", 3122, new HadoopWrapper(), 10, 
 					"b4b9f25f25e78fdc60c4eb954ee62d49");
 			aggr.start();
+			aggr.WarmUp();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

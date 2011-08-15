@@ -51,7 +51,7 @@ public class Client {
 			while ((position = (String)positions.nextElement()) != null) {
 				totalTime += System.currentTimeMillis() - beginTime;
 				++count;
-				System.out.print(position);
+				System.out.print(position.length() + " ");
 			}
 			System.out.println();
 			latency.add(totalTime / count);
@@ -68,7 +68,7 @@ public class Client {
 	 */
 	public static void main(String[] args) {
 		try {
-			Client client = new Client("localhost", 3122, new HadoopWrapper(), 10000,
+			Client client = new Client("localhost", 3122, new HadoopWrapper(), 30000,
 					"KeyWords.txt");
 			ArrayList<Double> normal = client.evaSearch("Search");
 			ArrayList<Double> mr = client.evaSearch("MrSearch");
