@@ -13,7 +13,7 @@ import java.util.ArrayList;
 
 import org.stanzax.quatrain.client.MrClient;
 import org.stanzax.quatrain.client.ReplySet;
-import org.stanzax.quatrain.hadoop.HadoopWrapper;
+import org.stanzax.quatrain.hprose.HproseWrapper;
 import org.stanzax.quatrain.io.WritableWrapper;
 
 /**
@@ -36,6 +36,18 @@ public class Client {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+	
+	public void warmup() {
+		ReplySet rs = remote.invoke(null, "WarmUp");
+		while (rs.isPartial()) {
+			try {
+				Thread.sleep(10000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		rs.close();
 	}
 	
 	public ArrayList<Double> evaSearch(String method) {
@@ -65,15 +77,22 @@ public class Client {
 	
 	/**
 	 * @param args
+	 * 	args[0] Server IP
+	 * 	args[1]	Port number
+	 * 	args[2]	Timeout
 	 */
 	public static void main(String[] args) {
 		try {
-			Client client = new Client("localhost", 3122, new HadoopWrapper(), 30000,
+			Client client = new Client(args[0], 
+					Integer.valueOf(args[1]), new HproseWrapper(), 
+					Long.valueOf(args[2]),
 					"KeyWords.txt");
+			
+			client.warmup();
 			ArrayList<Double> normal = client.evaSearch("Search");
 			ArrayList<Double> mr = client.evaSearch("MrSearch");
 			
-			FileWriter out = new FileWriter("Hadoop-Glickr-" + System.currentTimeMillis());
+			FileWriter out = new FileWriter("Hprose-Glickr-" + System.currentTimeMillis());
 			BufferedWriter br = new BufferedWriter(out);
 			br.write("#WordNum\tNormalLatency\tMrLatency");
 			br.write('\n');

@@ -4,6 +4,8 @@
 package org.stanzax.glickr;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -14,7 +16,7 @@ import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.stanzax.quatrain.hadoop.HadoopWrapper;
+import org.stanzax.quatrain.hprose.HproseWrapper;
 import org.stanzax.quatrain.io.WritableWrapper;
 import org.stanzax.quatrain.server.MrServer;
 
@@ -92,38 +94,38 @@ public class Aggregator extends MrServer {
 
 		// Build data structure for log
 		int cntKeys = keywords.size();
-		final ConcurrentHashMap<Group, ArrayList<Integer>> results = 
-			new ConcurrentHashMap<Group, ArrayList<Integer>>();
-		results.put(Group.ARGENTINA, new ArrayList<Integer>(cntKeys));
-		results.put(Group.AUSTRIA, new ArrayList<Integer>(cntKeys));
-		results.put(Group.BHUTAN, new ArrayList<Integer>(cntKeys));
-		results.put(Group.BOLIVIA, new ArrayList<Integer>(cntKeys));
-		results.put(Group.BRAZIL, new ArrayList<Integer>(cntKeys));
-		results.put(Group.CANADA, new ArrayList<Integer>(cntKeys));
-		results.put(Group.CHINA, new ArrayList<Integer>(cntKeys));
-		results.put(Group.CUBA, new ArrayList<Integer>(cntKeys));
-		results.put(Group.ENGLAND, new ArrayList<Integer>(cntKeys));
-		results.put(Group.FRANCE, new ArrayList<Integer>(cntKeys));
-		results.put(Group.GERMANY, new ArrayList<Integer>(cntKeys));
-		results.put(Group.GREAT_BRITAIN, new ArrayList<Integer>(cntKeys));
-		results.put(Group.GREECE, new ArrayList<Integer>(cntKeys));
-		results.put(Group.GUYANA, new ArrayList<Integer>(cntKeys));
-		results.put(Group.INDIA, new ArrayList<Integer>(cntKeys));
-		results.put(Group.IRAN, new ArrayList<Integer>(cntKeys));
-		results.put(Group.JAMAICA, new ArrayList<Integer>(cntKeys));
-		results.put(Group.JAPAN, new ArrayList<Integer>(cntKeys));
-		results.put(Group.KAZAKHSTAN, new ArrayList<Integer>(cntKeys));
-		results.put(Group.KOREA, new ArrayList<Integer>(cntKeys));
-		results.put(Group.LAOS, new ArrayList<Integer>(cntKeys));
-		results.put(Group.MALAYSIA, new ArrayList<Integer>(cntKeys));
-		results.put(Group.MEXICO, new ArrayList<Integer>(cntKeys));
-		results.put(Group.NEPAL, new ArrayList<Integer>(cntKeys));
-		results.put(Group.PARAGUAY, new ArrayList<Integer>(cntKeys));
-		results.put(Group.SPAIN, new ArrayList<Integer>(cntKeys));
-		results.put(Group.SWITZERLAND, new ArrayList<Integer>(cntKeys));
-		results.put(Group.THAILAND, new ArrayList<Integer>(cntKeys));
-		results.put(Group.URUGUAY, new ArrayList<Integer>(cntKeys));
-		results.put(Group.USA, new ArrayList<Integer>(cntKeys));
+		final ConcurrentHashMap<Group, ArrayList<Long>> results = 
+			new ConcurrentHashMap<Group, ArrayList<Long>>();
+		results.put(Group.ARGENTINA, new ArrayList<Long>(cntKeys));
+		results.put(Group.AUSTRIA, new ArrayList<Long>(cntKeys));
+		results.put(Group.BHUTAN, new ArrayList<Long>(cntKeys));
+		results.put(Group.BOLIVIA, new ArrayList<Long>(cntKeys));
+		results.put(Group.BRAZIL, new ArrayList<Long>(cntKeys));
+		results.put(Group.CANADA, new ArrayList<Long>(cntKeys));
+		results.put(Group.CHINA, new ArrayList<Long>(cntKeys));
+		results.put(Group.CUBA, new ArrayList<Long>(cntKeys));
+		results.put(Group.ENGLAND, new ArrayList<Long>(cntKeys));
+		results.put(Group.FRANCE, new ArrayList<Long>(cntKeys));
+		results.put(Group.GERMANY, new ArrayList<Long>(cntKeys));
+		results.put(Group.GREAT_BRITAIN, new ArrayList<Long>(cntKeys));
+		results.put(Group.GREECE, new ArrayList<Long>(cntKeys));
+		results.put(Group.GUYANA, new ArrayList<Long>(cntKeys));
+		results.put(Group.INDIA, new ArrayList<Long>(cntKeys));
+		results.put(Group.IRAN, new ArrayList<Long>(cntKeys));
+		results.put(Group.JAMAICA, new ArrayList<Long>(cntKeys));
+		results.put(Group.JAPAN, new ArrayList<Long>(cntKeys));
+		results.put(Group.KAZAKHSTAN, new ArrayList<Long>(cntKeys));
+		results.put(Group.KOREA, new ArrayList<Long>(cntKeys));
+		results.put(Group.LAOS, new ArrayList<Long>(cntKeys));
+		results.put(Group.MALAYSIA, new ArrayList<Long>(cntKeys));
+		results.put(Group.MEXICO, new ArrayList<Long>(cntKeys));
+		results.put(Group.NEPAL, new ArrayList<Long>(cntKeys));
+		results.put(Group.PARAGUAY, new ArrayList<Long>(cntKeys));
+		results.put(Group.SPAIN, new ArrayList<Long>(cntKeys));
+		results.put(Group.SWITZERLAND, new ArrayList<Long>(cntKeys));
+		results.put(Group.THAILAND, new ArrayList<Long>(cntKeys));
+		results.put(Group.URUGUAY, new ArrayList<Long>(cntKeys));
+		results.put(Group.USA, new ArrayList<Long>(cntKeys));
 		
 		System.out.print("Warmup finishes: ");
 		for (final String text : keywords) {
@@ -140,10 +142,11 @@ public class Aggregator extends MrServer {
 						para.setExtras(extras);
 						
 						try {
-							PhotoList list = photos.search(para, perPage, numPage);
-							results.get(group).add(list.size());
+							long beginTime = System.currentTimeMillis();
+							photos.search(para, perPage, numPage);
+							results.get(group).add(System.currentTimeMillis() - beginTime);
 						} catch (Exception e) {
-							results.get(group).add(0);
+							results.get(group).add(Long.MAX_VALUE);
 							System.out.println("[WarmUp]Error in " + group.getName() +
 									" for " + text + " : " + e.getMessage());
 						} finally {
@@ -172,7 +175,14 @@ public class Aggregator extends MrServer {
 		System.out.println();
 		
 		// Output log
-		PrintStream printer = System.out;
+		PrintStream printer;
+		try {
+			printer = new PrintStream(
+					new File("glickr-warmup-stat-" + System.currentTimeMillis()));
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+			printer = System.out;
+		}
 		printer.print("#");
 		for (Group group : groups) {
 			printer.print("\t" + group.getName());
@@ -273,13 +283,17 @@ public class Aggregator extends MrServer {
 
 	/**
 	 * @param args
+	 * 	args[0] Server IP
+	 * 	args[1]	Port number
+	 * 	args[2]	Count of worker threads
 	 */
 	public static void main(String[] args) {
 		try {
-			Aggregator aggr = new Aggregator("localhost", 3122, new HadoopWrapper(), 10, 
+			Aggregator aggr = new Aggregator(args[0], 
+					Integer.valueOf(args[1]), new HproseWrapper(), 
+					Integer.valueOf(args[2]), 
 					"b4b9f25f25e78fdc60c4eb954ee62d49");
 			aggr.start();
-			aggr.WarmUp();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
