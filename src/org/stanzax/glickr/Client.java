@@ -4,10 +4,10 @@
 package org.stanzax.glickr;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -60,7 +60,7 @@ public class Client {
 	}
 	
 	private double evaInvoke(String method, String keyword) {
-		ArrayList<Double> tri = new ArrayList<Double>();
+		ArrayList<Double> results = new ArrayList<Double>();
 		int count;
 		double beginTime, totalTime;
 		for (int i = 0; i < 3; ++i) {
@@ -73,13 +73,13 @@ public class Client {
 				++count;
 			}
 			totalTime /= count;
-			tri.add(totalTime);
+			results.add(totalTime);
 			System.out.print(totalTime + "\t");
 			positions.close();
 		}
 		System.out.println();
-		Collections.sort(tri);
-		return tri.get(1);
+		Collections.sort(results);
+		return results.get(1);
 	}
 	
 	private MrClient remote;
@@ -90,7 +90,6 @@ public class Client {
 	 * 	args[0] Server IP
 	 * 	args[1]	Port number
 	 * 	args[2]	Timeout
-	 *  args[3] To warm-up
 	 */
 	public static void main(String[] args) {
 		try {
@@ -99,23 +98,22 @@ public class Client {
 					Long.valueOf(args[2]),
 					"KeyWords.txt");
 			
-			if (args[3].equals("1")) client.warmup();
+			client.warmup();
 			ArrayList<Double> normal = client.evaSearch("Search");
 			ArrayList<Double> mr = client.evaSearch("MrSearch");
 			
-			FileWriter out = new FileWriter("hprose-glickr-" + (int)System.currentTimeMillis());
-			BufferedWriter br = new BufferedWriter(out);
-			br.write("#WordNum\tNormalLatency\tMrLatency");
-			br.write('\n');
+			PrintStream out = new PrintStream(
+					new File("hprose-glickr-" + (int)System.currentTimeMillis()));
+			out.println("#WordNum\tNormalLatency\tMrLatency");
 			int count = normal.size();
 			if (mr.size() != count) 
 				throw new IllegalArgumentException("Keywords diverse of normal search and multi-return search.");
-			for (int i = 1; i <= count; ++i) {
-				br.write(i + "\t");
-				br.write(normal.get(i) + "\t");
-				br.write(mr.get(i) + "\n");
+			for (int i = 0; i < count; ++i) {
+				out.print((i + 1) + "\t");
+				out.print(normal.get(i) + "\t");
+				out.println(mr.get(i));
 			}
-			br.close();
+			out.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
